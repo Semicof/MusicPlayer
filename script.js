@@ -8,6 +8,9 @@ const progress = document.querySelector(".progress");
 const nextBtn = document.querySelector(".btn-next");
 const prevBtn = document.querySelector(".btn-prev");
 const randBtn = document.querySelector(".btn-random");
+const repeatBtn = document.querySelector(".btn-repeat");
+const playlist = document.querySelector(".playlist");
+const LOCAL_STORAGE_KEY="SEMICOF_PLAYER"
 const cdAnimate = cd.animate(
   [
     {
@@ -35,52 +38,61 @@ const app = {
       singer: "Trim",
       musicPath: "/MusicPlayer/assets/music/asvbt.mp3",
       imgPath: "/MusicPlayer/assets/img/mainImg.jpg",
-      played: false
+      played: false,
     },
     {
       name: "Có chàng trai viết lên cây",
       singer: "Phan Mạnh Quỳnh",
       musicPath: "/MusicPlayer/assets/music/cctvlc.mp3",
       imgPath: "/MusicPlayer/assets/img/mainImg.jpg",
-      played: false
+      played: false,
     },
     {
       name: "Bước qua mùa cô đơn",
       singer: "Vũ",
       musicPath: "/MusicPlayer/assets/music/bqmcd.mp3",
       imgPath: "/MusicPlayer/assets/img/mainImg.jpg",
-      played: false
+      played: false,
     },
     {
       name: "Ngây thơ",
       singer: "Tăng Duy Tân",
       musicPath: "/MusicPlayer/assets/music/nt.mp3",
       imgPath: "/MusicPlayer/assets/img/mainImg.jpg",
-      played: false
+      played: false,
     },
     {
       name: "Tình đầu",
       singer: "Tăng Duy Tân",
       musicPath: "/MusicPlayer/assets/music/td.mp3",
       imgPath: "/MusicPlayer/assets/img/mainImg.jpg",
-      played: false
+      played: false,
     },
     {
       name: "Nhạt",
       singer: "Phan Mạnh Quỳnh",
       musicPath: "/MusicPlayer/assets/music/n.mp3",
       imgPath: "/MusicPlayer/assets/img/mainImg.jpg",
-      played: false
+      played: false,
     },
   ],
-
+  configs:JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY))||{}
+  ,
   currentIndex: 0,
   isRandom: false,
+  isRepeated: false,
+  setConfig: function(key,val){
+    this.configs[key]=val;
+    localStorage.setItem(LOCAL_STORAGE_KEY,JSON.stringify(this.configs));
+  }
+  ,
   //Render default music info & img
   render: function () {
-    const html = this.songs.map((song) => {
+    const html = this.songs.map((song, index) => {
       return `
-            <div class="song">
+            <div class="song ${
+              index == this.currentIndex ? "active" : ""
+            }"  data-index="${index}">
             <div class="thumb" style="background-image: url('${song.imgPath}')">
             </div>
             <div class="body">
@@ -93,7 +105,7 @@ const app = {
           </div>
             `;
     });
-    document.querySelector(".playlist").innerHTML = html.join("");
+    playlist.innerHTML = html.join("");
   },
 
   //Event Handler
@@ -154,6 +166,8 @@ const app = {
       if (player.classList.contains("playing")) {
         audio.play();
       }
+      this.render();
+      this.scrollToActiveSong();
     });
 
     prevBtn.addEventListener("click", () => {
@@ -173,14 +187,60 @@ const app = {
       if (player.classList.contains("playing")) {
         audio.play();
       }
+      this.render();
+      this.scrollToActiveSong();
     });
 
     // random play function
     randBtn.addEventListener("click", () => {
       this.isRandom = !this.isRandom;
       randBtn.classList.toggle("active", this.isRandom);
+      this.setConfig("isRandom",this.isRandom);
+    });
+
+    repeatBtn.addEventListener("click", () => {
+      this.isRepeated = !this.isRepeated;
+      repeatBtn.classList.toggle("active", this.isRepeated);
+      this.setConfig("isRepeated",this.isRepeated);
+    });
+
+    // handle audio when song ended
+    audio.onended = () => {
+      if (this.isRepeated) {
+        progress.value = 0;
+        audio.play();
+      } else {
+        this.currentIndex++;
+        this.loadCurrentSong();
+        progress.value = 0;
+        audio.play();
+        cdAnimate.play();
+      }
+    };
+
+    playlist.addEventListener("click", (e) => {
+      const songNode = e.target.closest(".song:not(.active");
+      if (songNode || e.target.closest(".option")) {
+        if (e.target.closest(".option")) {
+        }
+        if (songNode) {
+          this.currentIndex = songNode.getAttribute("data-index");
+          console.log(songNode.getAttribute("data-index"));
+          this.loadCurrentSong();
+          this.render();
+          player.classList.add("playing");
+          audio.play();
+        }
+      }
     });
   },
+  loadConfig:function(){
+    this.isRandom=this.configs.isRandom;
+    this.isRepeated=this.configs.isRepeated;
+    randBtn.classList.toggle("active", this.isRandom);
+    repeatBtn.classList.toggle("active", this.isRepeated);
+  }
+  ,
 
   currentSong: function () {
     return this.songs[this.currentIndex];
@@ -194,7 +254,7 @@ const app = {
 
   playRandomSong: function () {
     let num = 0;
-    while (this.songs[num].played==true) {
+    while (this.songs[num].played == true) {
       num = Math.floor(Math.random() * this.songs.length);
     }
     this.currentIndex = num;
@@ -202,7 +262,22 @@ const app = {
     this.loadCurrentSong();
   },
 
+  scrollToActiveSong: () => {
+    setTimeout(() => {
+      if (this.currentIndex < 4) {
+        document.querySelector(".song.active").scrollIntoView({
+          behavior: "smooth",
+        });
+      } else {
+        document.querySelector(".song.active").scrollIntoView({
+          behavior: "smooth",
+          block: "nearest",
+        });
+      }
+    }, 100);
+  },
   start: function () {
+    this.loadConfig();
     this.handleEvent();
     this.loadCurrentSong();
     this.render();
@@ -210,6 +285,6 @@ const app = {
 };
 
 //test code
-
+console.log(app.configs);
 // start application
 app.start();
